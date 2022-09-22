@@ -701,6 +701,10 @@ declare namespace monaco {
 		 */
 		collapseToStart(): Range;
 		/**
+		 * Moves the range by the given amount of lines.
+		 */
+		delta(lineCount: number): Range;
+		/**
 		 * Create a new empty range using this range's start position.
 		 */
 		static collapseToStart(range: IRange): Range;
@@ -1497,6 +1501,10 @@ declare namespace monaco.editor {
 		 */
 		isWholeLine?: boolean;
 		/**
+		 * Always render the decoration (even when the range it encompasses is collapsed).
+		 */
+		showIfCollapsed?: boolean;
+		/**
 		 * Specifies the stack order of a decoration.
 		 * A decoration with greater stack order is always in front of a decoration with
 		 * a lower stack order when the decorations are on the same line.
@@ -2010,7 +2018,7 @@ declare namespace monaco.editor {
 		 * @param filterOutValidation If set, it will ignore decorations specific to validation (i.e. warnings, errors).
 		 * @return An array with the decorations
 		 */
-		getDecorationsInRange(range: IRange, ownerId?: number, filterOutValidation?: boolean): IModelDecoration[];
+		getDecorationsInRange(range: IRange, ownerId?: number, filterOutValidation?: boolean, onlyMinimapDecorations?: boolean): IModelDecoration[];
 		/**
 		 * Gets all the decorations as an array.
 		 * @param ownerId If set, it will ignore decorations belonging to other owners.
@@ -2626,6 +2634,10 @@ declare namespace monaco.editor {
 		 * New language
 		 */
 		readonly newLanguage: string;
+		/**
+		 * Source of the call that caused the event.
+		 */
+		readonly source: string;
 	}
 
 	/**
@@ -2947,7 +2959,7 @@ declare namespace monaco.editor {
 		 */
 		scrollbar?: IEditorScrollbarOptions;
 		/**
-		 * Control the behavior of the sticky scroll
+		 * Control the behavior of sticky scroll options
 		 */
 		stickyScroll?: IEditorStickyScrollOptions;
 		/**
@@ -3418,6 +3430,10 @@ declare namespace monaco.editor {
 		 */
 		showDeprecated?: boolean;
 		/**
+		 * Controls whether suggestions allow matches in the middle of the word instead of only at the beginning
+		 */
+		matchOnWordStartOnly?: boolean;
+		/**
 		 * Control the behavior and rendering of the inline hints.
 		 */
 		inlayHints?: IEditorInlayHintsOptions;
@@ -3501,6 +3517,10 @@ declare namespace monaco.editor {
 		 * Control the wrapping of the diff editor.
 		 */
 		diffWordWrap?: 'off' | 'on' | 'inherit';
+		/**
+		 * Diff Algorithm
+		*/
+		diffAlgorithm?: 'smart' | 'experimental';
 	}
 
 	/**
@@ -3808,14 +3828,15 @@ declare namespace monaco.editor {
 		enabled?: boolean;
 	}
 
-	/**
-	 * Configuration options for editor sticky scroll
-	 */
 	export interface IEditorStickyScrollOptions {
 		/**
 		 * Enable the sticky scroll
 		 */
 		enabled?: boolean;
+		/**
+		 * Maximum number of sticky lines to show
+		 */
+		maxLineCount?: number;
 	}
 
 	/**
@@ -4200,6 +4221,10 @@ declare namespace monaco.editor {
 		 */
 		showDeprecated?: boolean;
 		/**
+		 * Controls whether suggestions allow matches in the middle of the word instead of only at the beginning
+		 */
+		matchOnWordStartOnly?: boolean;
+		/**
 		 * Show field-suggestions.
 		 */
 		showFields?: boolean;
@@ -4447,8 +4472,8 @@ declare namespace monaco.editor {
 		snippetSuggestions = 102,
 		smartSelect = 103,
 		smoothScrolling = 104,
-		stickyTabStops = 105,
-		stickyScroll = 106,
+		stickyScroll = 105,
+		stickyTabStops = 106,
 		stopRenderingLineAfter = 107,
 		suggest = 108,
 		suggestFontSize = 109,
@@ -4515,6 +4540,7 @@ declare namespace monaco.editor {
 		dragAndDrop: IEditorOption<EditorOption.dragAndDrop, boolean>;
 		emptySelectionClipboard: IEditorOption<EditorOption.emptySelectionClipboard, boolean>;
 		dropIntoEditor: IEditorOption<EditorOption.dropIntoEditor, Readonly<Required<IDropIntoEditorOptions>>>;
+		stickyScroll: IEditorOption<EditorOption.stickyScroll, Readonly<Required<IEditorStickyScrollOptions>>>;
 		extraEditorClassName: IEditorOption<EditorOption.extraEditorClassName, string>;
 		fastScrollSensitivity: IEditorOption<EditorOption.fastScrollSensitivity, number>;
 		find: IEditorOption<EditorOption.find, Readonly<Required<IEditorFindOptions>>>;
@@ -4587,7 +4613,6 @@ declare namespace monaco.editor {
 		snippetSuggestions: IEditorOption<EditorOption.snippetSuggestions, 'none' | 'top' | 'bottom' | 'inline'>;
 		smartSelect: IEditorOption<EditorOption.smartSelect, Readonly<Required<ISmartSelectOptions>>>;
 		smoothScrolling: IEditorOption<EditorOption.smoothScrolling, boolean>;
-		stickyScroll: IEditorOption<EditorOption.stickyScroll, Readonly<Required<IEditorStickyScrollOptions>>>;
 		stopRenderingLineAfter: IEditorOption<EditorOption.stopRenderingLineAfter, number>;
 		suggest: IEditorOption<EditorOption.suggest, Readonly<Required<ISuggestOptions>>>;
 		inlineSuggest: IEditorOption<EditorOption.inlineSuggest, Readonly<Required<IInlineSuggestOptions>>>;
@@ -5021,6 +5046,8 @@ declare namespace monaco.editor {
 
 	export interface IMouseTargetOutsideEditor extends IBaseMouseTarget {
 		readonly type: MouseTargetType.OUTSIDE_EDITOR;
+		readonly outsidePosition: 'above' | 'below' | 'left' | 'right';
+		readonly outsideDistance: number;
 	}
 
 	/**
@@ -5372,9 +5399,13 @@ declare namespace monaco.editor {
 		 */
 		getVisibleRanges(): Range[];
 		/**
-		 * Get the vertical position (top offset) for the line w.r.t. to the first line.
+		 * Get the vertical position (top offset) for the line's top w.r.t. to the first line.
 		 */
 		getTopForLineNumber(lineNumber: number): number;
+		/**
+		 * Get the vertical position (top offset) for the line's bottom w.r.t. to the first line.
+		 */
+		getBottomForLineNumber(lineNumber: number): number;
 		/**
 		 * Get the vertical position (top offset) for the position w.r.t. to the first line.
 		 */
@@ -7068,6 +7099,7 @@ declare namespace monaco.languages {
 		folder?: boolean;
 		skipTrashBin?: boolean;
 		maxSize?: number;
+		contentsBase64?: string;
 	}
 
 	export interface IWorkspaceFileEdit {

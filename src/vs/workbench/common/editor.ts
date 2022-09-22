@@ -484,6 +484,8 @@ export interface IResourceDiffEditorInput extends IBaseUntypedEditorInput {
 	readonly modified: IResourceEditorInput | ITextResourceEditorInput | IUntitledTextResourceEditorInput;
 }
 
+export type IResourceMergeEditorInputSide = (IResourceEditorInput | ITextResourceEditorInput) & { detail?: string };
+
 /**
  * A resource merge editor input compares multiple editors
  * highlighting the differences for merging.
@@ -496,12 +498,12 @@ export interface IResourceMergeEditorInput extends IBaseUntypedEditorInput {
 	/**
 	 * The one changed version of the file.
 	 */
-	readonly input1: IResourceEditorInput | ITextResourceEditorInput;
+	readonly input1: IResourceMergeEditorInputSide;
 
 	/**
 	 * The second changed version of the file.
 	 */
-	readonly input2: IResourceEditorInput | ITextResourceEditorInput;
+	readonly input2: IResourceMergeEditorInputSide;
 
 	/**
 	 * The base common ancestor of the file to merge.
@@ -559,6 +561,12 @@ export function isUntitledResourceEditorInput(editor: unknown): editor is IUntit
 	}
 
 	return candidate.resource === undefined || candidate.resource.scheme === Schemas.untitled || candidate.forceUntitled === true;
+}
+
+const UNTITLED_WITHOUT_ASSOCIATED_RESOURCE_REGEX = /Untitled-\d+/;
+
+export function isUntitledWithAssociatedResource(resource: URI): boolean {
+	return resource.scheme === Schemas.untitled && resource.path.length > 1 && !UNTITLED_WITHOUT_ASSOCIATED_RESOURCE_REGEX.test(resource.path);
 }
 
 export function isResourceMergeEditorInput(editor: unknown): editor is IResourceMergeEditorInput {

@@ -216,12 +216,15 @@ suite('ExtensionRecommendationsService Test', () => {
 			onDidInstallExtensions: didInstallEvent.event,
 			onUninstallExtension: uninstallEvent.event,
 			onDidUninstallExtension: didUninstallEvent.event,
+			onDidChangeProfile: Event.None,
 			async getInstalled() { return []; },
 			async canInstall() { return true; },
 			async getExtensionsControlManifest() { return { malicious: [], deprecated: {} }; },
 			async getTargetPlatform() { return getTargetPlatform(platform, arch); }
 		});
 		instantiationService.stub(IExtensionService, <Partial<IExtensionService>>{
+			onDidChangeExtensions: Event.None,
+			async getExtensions() { return Promise.resolve([]); },
 			async whenInstalledExtensionsRegistered() { return true; }
 		});
 		instantiationService.stub(IWorkbenchExtensionEnablementService, new TestExtensionEnablementService(instantiationService));
@@ -257,9 +260,7 @@ suite('ExtensionRecommendationsService Test', () => {
 	});
 
 	suiteTeardown(() => {
-		if (experimentService) {
-			experimentService.dispose();
-		}
+		experimentService?.dispose();
 	});
 
 	setup(() => {
