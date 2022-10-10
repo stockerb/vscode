@@ -125,13 +125,14 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 
 		instantiationService.stub(IExtensionService, <Partial<IExtensionService>>{
 			onDidChangeExtensions: Event.None,
-			async getExtensions() { return Promise.resolve([]); },
+			extensions: [],
 			async whenInstalledExtensionsRegistered() { return true; }
 		});
 	});
 
 	setup(async () => {
 		instantiationService.stubPromise(IExtensionManagementService, 'getInstalled', []);
+		instantiationService.stub(IExtensionGalleryService, 'isEnabled', true);
 		instantiationService.stubPromise(IExtensionGalleryService, 'query', aPage());
 		instantiationService.stubPromise(IExtensionGalleryService, 'getExtensions', []);
 		instantiationService.stubPromise(INotificationService, 'prompt', 0);
